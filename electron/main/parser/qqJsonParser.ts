@@ -178,6 +178,11 @@ export const qqJsonParser: ChatParser = {
       // 转换时间戳（QQ 导出是毫秒，需要转为秒）
       const timestamp = Math.floor(msg.timestamp / 1000)
 
+      // 过滤掉不合理的年份（2000年以前）
+      if (new Date(msg.timestamp).getFullYear() < 2000) {
+        continue
+      }
+
       // 确定消息类型
       const type = msg.system ? MessageType.SYSTEM : convertMessageType(msg.type, msg.content)
 

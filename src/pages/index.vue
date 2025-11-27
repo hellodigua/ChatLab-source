@@ -3,7 +3,7 @@ import { useChatStore } from '@/stores/chat'
 import { storeToRefs } from 'pinia'
 import Sidebar from '@/components/Sidebar.vue'
 import WelcomeGuide from '@/components/WelcomeGuide.vue'
-import AnalysisDashboard from '@/components/analysis/AnalysisDashboard.vue'
+import AnalysisDashboard from '@/components/AnalysisDashboard.vue'
 
 const chatStore = useChatStore()
 const { currentSessionId, isInitialized } = storeToRefs(chatStore)

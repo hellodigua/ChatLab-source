@@ -4,9 +4,9 @@ import { useChatStore } from '@/stores/chat'
 import { storeToRefs } from 'pinia'
 import type { AnalysisSession, MemberActivity, HourlyActivity, DailyActivity, MessageType } from '@/types/chat'
 import UITabs from '@/components/UI/Tabs.vue'
-import OverviewTab from './OverviewTab.vue'
-import MembersTab from './MembersTab.vue'
-import TimelineTab from './TimelineTab.vue'
+import OverviewTab from './analysis/OverviewTab.vue'
+import MembersTab from './analysis/MembersTab.vue'
+import TimelineTab from './analysis/TimelineTab.vue'
 
 const chatStore = useChatStore()
 const { currentSessionId } = storeToRefs(chatStore)

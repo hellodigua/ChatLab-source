@@ -7,11 +7,6 @@ export const router = createRouter({
       name: 'index',
       component: () => import('@/pages/index.vue'),
     },
-    {
-      path: '/ui',
-      name: 'ui',
-      component: () => import('@/pages/ui.vue'),
-    },
   ],
   history: createWebHashHistory(),
 })

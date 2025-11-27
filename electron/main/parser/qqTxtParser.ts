@@ -184,8 +184,17 @@ export const qqTxtParser: ChatParser = {
           name,
         })
 
-        currentSender = { platformId: qqNumber, name }
-        currentTimestamp = parseDateTime(dateTimeStr)
+        const timestamp = parseDateTime(dateTimeStr)
+
+        // 过滤掉不合理的年份（2000年以前）
+        if (new Date(timestamp * 1000).getFullYear() < 2000) {
+          // 如果时间戳无效，标记为 null，后续不添加
+          currentSender = null
+          currentTimestamp = 0
+        } else {
+          currentSender = { platformId: qqNumber, name }
+          currentTimestamp = timestamp
+        }
       } else {
         // 这是消息内容行
         currentContent.push(trimmedLine)
