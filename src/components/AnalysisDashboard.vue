@@ -24,6 +24,7 @@ const timeRange = ref<{ start: number; end: number } | null>(null)
 // 年份筛选
 const availableYears = ref<number[]>([])
 const selectedYear = ref<number>(0) // 0 表示全部
+const isInitialLoad = ref(false) // 用于跳过初始加载时的 watch 触发
 
 // Tab 配置
 const tabs = [
@@ -89,6 +90,13 @@ async function loadBaseData() {
     session.value = sessionData
     availableYears.value = years
     timeRange.value = range
+
+    // 默认选择最近的年份（years 已按降序排列）
+    if (years.length > 0) {
+      selectedYear.value = years[0]
+    } else {
+      selectedYear.value = 0
+    }
   } catch (error) {
     console.error('加载基础数据失败:', error)
   }
@@ -123,22 +131,26 @@ async function loadAnalysisData() {
 
 // 加载所有数据
 async function loadData() {
+  isInitialLoad.value = true
   await loadBaseData()
   await loadAnalysisData()
+  isInitialLoad.value = false
 }
 
 // 监听会话变化
 watch(
   currentSessionId,
   () => {
-    selectedYear.value = 0 // 重置年份筛选
+    // 年份筛选会在 loadBaseData 中自动设置为最近年份
     loadData()
   },
   { immediate: true }
 )
 
-// 监听年份筛选变化
+// 监听年份筛选变化（仅用户手动切换年份时触发）
 watch(selectedYear, () => {
+  // 跳过初始加载时的触发，避免重复加载
+  if (isInitialLoad.value) return
   loadAnalysisData()
 })
 
@@ -211,17 +223,20 @@ onMounted(loadData)
       </div>
 
       <!-- Tab Content -->
-      <div class="relative flex-1 overflow-y-auto p-6">
-        <!-- Loading Overlay -->
+      <div class="relative flex-1 overflow-y-auto">
+        <!-- Loading Overlay - 完全覆盖内容区 -->
         <div
           v-if="isLoading"
-          class="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/80 dark:bg-gray-950/80"
+          class="absolute inset-0 z-50 flex items-center justify-center bg-gray-50 dark:bg-gray-950"
         >
           <div class="text-center">
-            <UIcon name="i-heroicons-arrow-path" class="h-6 w-6 animate-spin text-pink-500" />
-            <p class="mt-2 text-sm text-gray-500">更新数据...</p>
+            <UIcon name="i-heroicons-arrow-path" class="h-8 w-8 animate-spin text-pink-500" />
+            <p class="mt-3 text-sm font-medium text-gray-600 dark:text-gray-400">加载中...</p>
           </div>
         </div>
+
+        <!-- Content with padding -->
+        <div class="p-6">
 
         <Transition name="fade" mode="out-in">
           <OverviewTab
@@ -257,6 +272,7 @@ onMounted(loadData)
             :time-filter="timeFilter"
           />
         </Transition>
+        </div>
       </div>
     </template>
 

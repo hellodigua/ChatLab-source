@@ -2,14 +2,25 @@ import { ipcMain, app, dialog, clipboard, shell, BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import * as fs from 'fs/promises'
 
-// 导入数据库和解析器模块
-import * as database from './database'
+// 导入数据库核心模块（用于导入和删除操作）
+import * as databaseCore from './database/core'
+// 导入 Worker 模块（用于异步分析查询）
+import * as worker from './worker'
+// 导入解析器模块
 import * as parser from './parser'
 
-console.log('[IpcMain] Database and Parser modules imported')
+console.log('[IpcMain] Database, Worker and Parser modules imported')
 
 const mainIpcMain = (win: BrowserWindow) => {
   console.log('[IpcMain] Registering IPC handlers...')
+
+  // 初始化 Worker
+  try {
+    worker.initWorker()
+    console.log('[IpcMain] Worker initialized successfully')
+  } catch (error) {
+    console.error('[IpcMain] Failed to initialize worker:', error)
+  }
   // ==================== 窗口操作 ====================
   ipcMain.on('window-min', (ev) => {
     ev.preventDefault()
@@ -182,8 +193,8 @@ const mainIpcMain = (win: BrowserWindow) => {
       })
 
       console.log('[IpcMain] Importing to database...')
-      // 导入到数据库
-      const sessionId = database.importData(parseResult)
+      // 导入到数据库（使用核心模块，同步操作）
+      const sessionId = databaseCore.importData(parseResult)
       console.log('[IpcMain] Import successful, sessionId:', sessionId)
 
       // 发送进度：完成
@@ -213,7 +224,7 @@ const mainIpcMain = (win: BrowserWindow) => {
   ipcMain.handle('chat:getSessions', async () => {
     console.log('[IpcMain] chat:getSessions called')
     try {
-      const sessions = database.getAllSessions()
+      const sessions = await worker.getAllSessions()
       console.log('[IpcMain] Found sessions:', sessions.length)
       return sessions
     } catch (error) {
@@ -227,7 +238,7 @@ const mainIpcMain = (win: BrowserWindow) => {
    */
   ipcMain.handle('chat:getSession', async (_, sessionId: string) => {
     try {
-      return database.getSession(sessionId)
+      return await worker.getSession(sessionId)
     } catch (error) {
       console.error('获取会话信息失败：', error)
       return null
@@ -239,7 +250,10 @@ const mainIpcMain = (win: BrowserWindow) => {
    */
   ipcMain.handle('chat:deleteSession', async (_, sessionId: string) => {
     try {
-      return database.deleteSession(sessionId)
+      // 先关闭 Worker 中的数据库连接
+      await worker.closeDatabase(sessionId)
+      // 然后删除文件（使用核心模块）
+      return databaseCore.deleteSession(sessionId)
     } catch (error) {
       console.error('删除会话失败：', error)
       return false
@@ -251,7 +265,7 @@ const mainIpcMain = (win: BrowserWindow) => {
    */
   ipcMain.handle('chat:getAvailableYears', async (_, sessionId: string) => {
     try {
-      return database.getAvailableYears(sessionId)
+      return await worker.getAvailableYears(sessionId)
     } catch (error) {
       console.error('获取可用年份失败：', error)
       return []
@@ -265,7 +279,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getMemberActivity',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getMemberActivity(sessionId, filter)
+        return await worker.getMemberActivity(sessionId, filter)
       } catch (error) {
         console.error('获取成员活跃度失败：', error)
         return []
@@ -278,7 +292,7 @@ const mainIpcMain = (win: BrowserWindow) => {
    */
   ipcMain.handle('chat:getMemberNameHistory', async (_, sessionId: string, memberId: number) => {
     try {
-      return database.getMemberNameHistory(sessionId, memberId)
+      return await worker.getMemberNameHistory(sessionId, memberId)
     } catch (error) {
       console.error('获取成员历史昵称失败：', error)
       return []
@@ -292,7 +306,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getHourlyActivity',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getHourlyActivity(sessionId, filter)
+        return await worker.getHourlyActivity(sessionId, filter)
       } catch (error) {
         console.error('获取小时活跃度失败：', error)
         return []
@@ -307,7 +321,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getDailyActivity',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getDailyActivity(sessionId, filter)
+        return await worker.getDailyActivity(sessionId, filter)
       } catch (error) {
         console.error('获取日活跃度失败：', error)
         return []
@@ -322,7 +336,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getWeekdayActivity',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getWeekdayActivity(sessionId, filter)
+        return await worker.getWeekdayActivity(sessionId, filter)
       } catch (error) {
         console.error('获取星期活跃度失败：', error)
         return []
@@ -337,7 +351,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getMessageTypeDistribution',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getMessageTypeDistribution(sessionId, filter)
+        return await worker.getMessageTypeDistribution(sessionId, filter)
       } catch (error) {
         console.error('获取消息类型分布失败：', error)
         return []
@@ -350,7 +364,7 @@ const mainIpcMain = (win: BrowserWindow) => {
    */
   ipcMain.handle('chat:getTimeRange', async (_, sessionId: string) => {
     try {
-      return database.getTimeRange(sessionId)
+      return await worker.getTimeRange(sessionId)
     } catch (error) {
       console.error('获取时间范围失败：', error)
       return null
@@ -362,7 +376,7 @@ const mainIpcMain = (win: BrowserWindow) => {
    */
   ipcMain.handle('chat:getDbDirectory', async () => {
     try {
-      return database.getDbDirectory()
+      return worker.getDbDirectory()
     } catch (error) {
       console.error('获取数据库目录失败：', error)
       return null
@@ -383,7 +397,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getRepeatAnalysis',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getRepeatAnalysis(sessionId, filter)
+        return await worker.getRepeatAnalysis(sessionId, filter)
       } catch (error) {
         console.error('获取复读分析失败：', error)
         return { originators: [], initiators: [], breakers: [], totalRepeatChains: 0 }
@@ -398,7 +412,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getCatchphraseAnalysis',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getCatchphraseAnalysis(sessionId, filter)
+        return await worker.getCatchphraseAnalysis(sessionId, filter)
       } catch (error) {
         console.error('获取口头禅分析失败：', error)
         return { members: [] }
@@ -413,7 +427,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getNightOwlAnalysis',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getNightOwlAnalysis(sessionId, filter)
+        return await worker.getNightOwlAnalysis(sessionId, filter)
       } catch (error) {
         console.error('获取夜猫分析失败：', error)
         return {
@@ -435,7 +449,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getDragonKingAnalysis',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getDragonKingAnalysis(sessionId, filter)
+        return await worker.getDragonKingAnalysis(sessionId, filter)
       } catch (error) {
         console.error('获取龙王分析失败：', error)
         return { rank: [], totalDays: 0 }
@@ -450,7 +464,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getDivingAnalysis',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getDivingAnalysis(sessionId, filter)
+        return await worker.getDivingAnalysis(sessionId, filter)
       } catch (error) {
         console.error('获取潜水分析失败：', error)
         return { rank: [] }
@@ -465,7 +479,7 @@ const mainIpcMain = (win: BrowserWindow) => {
     'chat:getMonologueAnalysis',
     async (_, sessionId: string, filter?: { startTs?: number; endTs?: number }) => {
       try {
-        return database.getMonologueAnalysis(sessionId, filter)
+        return await worker.getMonologueAnalysis(sessionId, filter)
       } catch (error) {
         console.error('获取自言自语分析失败：', error)
         return { rank: [], maxComboRecord: null }

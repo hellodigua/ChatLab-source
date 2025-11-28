@@ -10,6 +10,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'electron/main/index.ts'),
+          'worker/dbWorker': resolve(__dirname, 'electron/main/worker/dbWorker.ts'),
         },
       },
     },
