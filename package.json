@@ -24,7 +24,8 @@
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^4.0.0",
     "better-sqlite3": "^12.4.6",
-    "electron-updater": "^6.6.2"
+    "electron-updater": "^6.6.2",
+    "stream-json": "^1.9.1"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^1.0.2",
@@ -35,6 +36,7 @@
     "@rushstack/eslint-patch": "^1.15.0",
     "@tailwindcss/vite": "^4.0.0",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/stream-json": "^1.7.8",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vueuse/core": "^13.9.0",

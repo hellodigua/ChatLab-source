@@ -37,10 +37,12 @@ import {
   getCheckInAnalysis,
 } from './queryAdvanced'
 import { parseFile, detectFormat } from '../parser'
+import { streamImport, streamParseFileInfo } from './streamImport'
 import type { FileParseInfo } from '../../../src/types/chat'
 
 /**
  * 解析文件获取基本信息（在 Worker 线程中执行，不阻塞主进程）
+ * @deprecated 使用 streamParseFileInfo 替代
  */
 function parseFileInfo(filePath: string): FileParseInfo {
   const format = detectFormat(filePath)
@@ -70,9 +72,9 @@ interface WorkerMessage {
   payload: any
 }
 
-// 消息类型到处理函数的映射
-const handlers: Record<string, (payload: any) => any> = {
-  // 文件解析（合并功能使用）
+// 同步消息处理器
+const syncHandlers: Record<string, (payload: any) => any> = {
+  // 文件解析（合并功能使用，已废弃）
   parseFileInfo: (p) => parseFileInfo(p.filePath),
 
   // 基础查询
@@ -111,17 +113,34 @@ const handlers: Record<string, (payload: any) => any> = {
   getCheckInAnalysis: (p) => getCheckInAnalysis(p.sessionId, p.filter),
 }
 
+// 异步消息处理器（流式操作）
+const asyncHandlers: Record<string, (payload: any, requestId: string) => Promise<any>> = {
+  // 流式导入
+  streamImport: (p, id) => streamImport(p.filePath, id),
+  // 流式解析文件信息（用于合并预览）
+  streamParseFileInfo: (p, id) => streamParseFileInfo(p.filePath, id),
+}
+
 // 处理消息
-parentPort?.on('message', (message: WorkerMessage) => {
+parentPort?.on('message', async (message: WorkerMessage) => {
   const { id, type, payload } = message
 
   try {
-    const handler = handlers[type]
-    if (!handler) {
+    // 检查是否是异步处理器
+    const asyncHandler = asyncHandlers[type]
+    if (asyncHandler) {
+      const result = await asyncHandler(payload, id)
+      parentPort?.postMessage({ id, success: true, result })
+      return
+    }
+
+    // 同步处理器
+    const syncHandler = syncHandlers[type]
+    if (!syncHandler) {
       throw new Error(`Unknown message type: ${type}`)
     }
 
-    const result = handler(payload)
+    const result = syncHandler(payload)
     parentPort?.postMessage({ id, success: true, result })
   } catch (error) {
     parentPort?.postMessage({

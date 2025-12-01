@@ -71,9 +71,9 @@ export const useChatStore = defineStore(
 
         // 初始化状态
         importProgress.value = {
-          stage: 'reading',
+          stage: 'detecting',
           progress: 0,
-          message: '',
+          message: '准备导入...',
         }
 
         // 进度队列控制

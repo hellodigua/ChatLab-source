@@ -6,7 +6,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { app } from 'electron'
-import { parseFile, detectFormat } from '../parser'
+import { parseFileSync, detectFormat } from '../parser'
 import { importData } from '../database/core'
 import type {
   ParseResult,
@@ -57,18 +57,19 @@ function generateOutputFilename(name: string): string {
 
 /**
  * 解析文件获取基本信息（用于预览）
+ * 注意：推荐使用 parser.parseFileInfo 获取更详细的信息
  */
-export function parseFileInfo(filePath: string): FileParseInfo {
+export async function parseFileInfo(filePath: string): Promise<FileParseInfo> {
   const format = detectFormat(filePath)
   if (!format) {
     throw new Error('无法识别文件格式')
   }
 
-  const result = parseFile(filePath)
+  const result = await parseFileSync(filePath)
 
   return {
     name: result.meta.name,
-    format,
+    format: format.name,
     platform: result.meta.platform,
     messageCount: result.messages.length,
     memberCount: result.members.length,
@@ -86,7 +87,7 @@ function getMessageKey(msg: ParsedMessage): string {
  * 检测合并冲突
  * 规则：时间戳 + 用户名 + 字符长度，当两项相同但另一项不同时报告冲突
  */
-export function checkConflicts(filePaths: string[]): ConflictCheckResult {
+export async function checkConflicts(filePaths: string[]): Promise<ConflictCheckResult> {
   const allMessages: Array<{ msg: ParsedMessage; source: string }> = []
   const conflicts: MergeConflict[] = []
 
@@ -101,7 +102,7 @@ export function checkConflicts(filePaths: string[]): ConflictCheckResult {
   for (const filePath of filePaths) {
     const format = detectFormat(filePath)
     if (format) {
-      formats.push(format)
+      formats.push(format.name)
     } else {
       throw new Error(`无法识别文件格式: ${path.basename(filePath)}`)
     }
@@ -118,7 +119,7 @@ export function checkConflicts(filePaths: string[]): ConflictCheckResult {
 
   // 解析所有文件
   for (const filePath of filePaths) {
-    const result = parseFile(filePath)
+    const result = await parseFileSync(filePath)
     const sourceName = path.basename(filePath)
     console.log(`[Merger] 解析 ${sourceName}: ${result.messages.length} 条消息`)
     for (const msg of result.messages) {
@@ -241,14 +242,14 @@ export function checkConflicts(filePaths: string[]): ConflictCheckResult {
 /**
  * 合并多个聊天记录文件
  */
-export function mergeFiles(params: MergeParams): MergeResult {
+export async function mergeFiles(params: MergeParams): Promise<MergeResult> {
   try {
     const { filePaths, outputName, outputDir, conflictResolutions, andAnalyze } = params
 
     // 解析所有文件
     const parseResults: Array<{ result: ParseResult; source: string }> = []
     for (const filePath of filePaths) {
-      const result = parseFile(filePath)
+      const result = await parseFileSync(filePath)
       parseResults.push({ result, source: path.basename(filePath) })
     }
 

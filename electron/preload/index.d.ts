@@ -76,6 +76,7 @@ interface MergeApi {
   parseFileInfo: (filePath: string) => Promise<FileParseInfo>
   checkConflicts: (filePaths: string[]) => Promise<ConflictCheckResult>
   mergeFiles: (params: MergeParams) => Promise<MergeResult>
+  onParseProgress: (callback: (data: { filePath: string; progress: ImportProgress }) => void) => () => void
 }
 
 declare global {

@@ -42,7 +42,7 @@ const api = {
     }
   },
   receive: (channel: string, func: (...args: unknown[]) => void) => {
-    const validChannels = ['show-message', 'chat:importProgress']
+    const validChannels = ['show-message', 'chat:importProgress', 'merge:parseProgress']
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
       ipcRenderer.on(channel, (_event, ...args) => func(...args))
@@ -300,6 +300,19 @@ const mergeApi = {
    */
   mergeFiles: (params: MergeParams): Promise<MergeResult> => {
     return ipcRenderer.invoke('merge:mergeFiles', params)
+  },
+
+  /**
+   * 监听解析进度（用于大文件）
+   */
+  onParseProgress: (callback: (data: { filePath: string; progress: ImportProgress }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { filePath: string; progress: ImportProgress }) => {
+      callback(data)
+    }
+    ipcRenderer.on('merge:parseProgress', handler)
+    return () => {
+      ipcRenderer.removeListener('merge:parseProgress', handler)
+    }
   },
 }
 

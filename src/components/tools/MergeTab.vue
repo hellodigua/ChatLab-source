@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { FileDropZone } from '@/components/UI'
 
 interface FileInfo {
@@ -8,8 +8,21 @@ interface FileInfo {
   name: string
   format: string
   messageCount: number
+  fileSize?: number // 文件大小（字节）
   status: 'pending' | 'parsed' | 'error'
   error?: string
+  // 解析进度（用于大文件）
+  progress?: number
+  progressMessage?: string
+}
+
+// 格式化文件大小
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
 interface MergeConflict {
@@ -34,6 +47,34 @@ const isMerging = ref(false)
 const mergeProgress = ref(0)
 const currentStep = ref<'select' | 'conflict' | 'done'>('select')
 const outputFilePath = ref('')
+
+// 解析进度监听
+let unsubscribeProgress: (() => void) | null = null
+
+onMounted(() => {
+  // 监听解析进度
+  unsubscribeProgress = window.mergeApi.onParseProgress(({ filePath, progress }) => {
+    const file = files.value.find((f) => f.path === filePath)
+    if (file && file.status === 'pending') {
+      // 使用 percentage 而不是 progress（更准确）
+      file.progress = progress.percentage ?? progress.progress ?? 0
+      // 构建更详细的进度消息
+      if (progress.messagesProcessed && progress.messagesProcessed > 0) {
+        file.progressMessage = `已处理 ${progress.messagesProcessed.toLocaleString()} 条消息`
+      } else if (progress.message) {
+        file.progressMessage = progress.message
+      } else {
+        file.progressMessage = '正在解析...'
+      }
+    }
+  })
+})
+
+onUnmounted(() => {
+  if (unsubscribeProgress) {
+    unsubscribeProgress()
+  }
+})
 
 // 计算总消息数
 const totalMessages = computed(() => files.value.reduce((sum, f) => sum + (f.messageCount || 0), 0))
@@ -66,6 +107,7 @@ async function addFilesByPaths(filePaths: string[]) {
       if (file) {
         file.format = info.format
         file.messageCount = info.messageCount
+        file.fileSize = info.fileSize
         file.status = 'parsed'
 
         // 设置默认输出名称（取第一个文件的群名）
@@ -293,13 +335,34 @@ const file2Name = computed(() => files.value[1]?.name || '文件 2')
 
               <!-- 文件信息 -->
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ file.name }}</p>
+                <div class="flex items-center gap-2">
+                  <p class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ file.name }}</p>
+                  <span
+                    v-if="file.fileSize && file.fileSize > 50 * 1024 * 1024"
+                    class="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  >
+                    大文件
+                  </span>
+                </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                   <span :class="getStatusColor(file.status)">
-                    {{ file.status === 'pending' ? '解析中...' : file.status === 'error' ? file.error : file.format }}
+                    {{
+                      file.status === 'pending'
+                        ? file.progressMessage || '解析中...'
+                        : file.status === 'error'
+                          ? file.error
+                          : file.format
+                    }}
                   </span>
-                  <template v-if="file.status === 'parsed'">· {{ file.messageCount.toLocaleString() }} 条消息</template>
+                  <template v-if="file.status === 'parsed'">
+                    · {{ file.messageCount.toLocaleString() }} 条消息
+                    <span v-if="file.fileSize" class="text-gray-400">· {{ formatFileSize(file.fileSize) }}</span>
+                  </template>
                 </p>
+                <!-- 解析进度条（大文件时显示） -->
+                <div v-if="file.status === 'pending' && file.progress !== undefined" class="mt-1.5">
+                  <UProgress :model-value="file.progress" size="xs" />
+                </div>
               </div>
 
               <!-- 删除按钮 -->

@@ -4,10 +4,11 @@ import * as fs from 'fs/promises'
 
 // 导入数据库核心模块（用于导入和删除操作）
 import * as databaseCore from './database/core'
-// 导入 Worker 模块（用于异步分析查询）
+// 导入 Worker 模块（用于异步分析查询和流式导入）
 import * as worker from './worker'
 // 导入解析器模块
 import * as parser from './parser'
+import { detectFormat, type ParseProgress } from './parser'
 // 导入合并模块
 import * as merger from './merger'
 import type { MergeParams } from '../../src/types/chat'
@@ -152,8 +153,9 @@ const mainIpcMain = (win: BrowserWindow) => {
       const filePath = filePaths[0]
       console.log('[IpcMain] File selected:', filePath)
 
-      // 检测文件格式
-      const format = parser.detectFormat(filePath)
+      // 检测文件格式（使用流式检测，只读取文件开头）
+      const formatFeature = detectFormat(filePath)
+      const format = formatFeature?.name || null
       console.log('[IpcMain] Detected format:', format)
       if (!format) {
         return { error: '无法识别的文件格式' }
@@ -167,47 +169,44 @@ const mainIpcMain = (win: BrowserWindow) => {
   })
 
   /**
-   * 导入聊天记录
+   * 导入聊天记录（流式版本）
    */
   ipcMain.handle('chat:import', async (_, filePath: string) => {
     console.log('[IpcMain] chat:import called with:', filePath)
 
     try {
-      // 发送进度：开始解析
+      // 发送进度：开始检测格式
       win.webContents.send('chat:importProgress', {
-        stage: 'parsing',
-        progress: 10,
-        message: '正在解析文件...',
+        stage: 'detecting',
+        progress: 5,
+        message: '正在检测文件格式...',
       })
 
-      console.log('[IpcMain] Parsing file...')
-      // 解析文件
-      const parseResult = parser.parseFile(filePath)
-      console.log('[IpcMain] Parse result:', {
-        memberCount: parseResult.members.length,
-        messageCount: parseResult.messages.length,
+      // 使用流式导入（在 Worker 线程中执行）
+      const result = await worker.streamImport(filePath, (progress: ParseProgress) => {
+        // 转发进度到渲染进程
+        win.webContents.send('chat:importProgress', {
+          stage: progress.stage,
+          progress: progress.percentage,
+          message: progress.message,
+          bytesRead: progress.bytesRead,
+          totalBytes: progress.totalBytes,
+          messagesProcessed: progress.messagesProcessed,
+        })
       })
 
-      // 发送进度：开始保存
-      win.webContents.send('chat:importProgress', {
-        stage: 'saving',
-        progress: 50,
-        message: `正在保存 ${parseResult.messages.length} 条消息...`,
-      })
-
-      console.log('[IpcMain] Importing to database...')
-      // 导入到数据库（使用核心模块，同步操作）
-      const sessionId = databaseCore.importData(parseResult)
-      console.log('[IpcMain] Import successful, sessionId:', sessionId)
-
-      // 发送进度：完成
-      win.webContents.send('chat:importProgress', {
-        stage: 'done',
-        progress: 100,
-        message: '导入完成',
-      })
-
-      return { success: true, sessionId }
+      if (result.success) {
+        console.log('[IpcMain] Stream import successful, sessionId:', result.sessionId)
+        return { success: true, sessionId: result.sessionId }
+      } else {
+        console.error('[IpcMain] Stream import failed:', result.error)
+        win.webContents.send('chat:importProgress', {
+          stage: 'error',
+          progress: 0,
+          message: result.error,
+        })
+        return { success: false, error: result.error }
+      }
     } catch (error) {
       console.error('[IpcMain] Import failed:', error)
 
@@ -583,12 +582,18 @@ const mainIpcMain = (win: BrowserWindow) => {
 
   /**
    * 解析文件获取基本信息（用于合并预览）
-   * 使用 Worker 线程异步执行，不阻塞主进程
+   * 使用流式解析，支持大文件
    */
   ipcMain.handle('merge:parseFileInfo', async (_, filePath: string) => {
     try {
-      // 使用 Worker 线程解析，避免阻塞 UI
-      return await worker.parseFileInfo(filePath)
+      // 使用流式解析，避免大文件 OOM
+      return await worker.streamParseFileInfo(filePath, (progress: ParseProgress) => {
+        // 可选：发送进度到渲染进程
+        win.webContents.send('merge:parseProgress', {
+          filePath,
+          progress,
+        })
+      })
     } catch (error) {
       console.error('解析文件信息失败：', error)
       throw error

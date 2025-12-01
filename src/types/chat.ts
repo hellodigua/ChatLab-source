@@ -355,9 +355,13 @@ export interface MemberNameHistory {
  * 导入进度回调
  */
 export interface ImportProgress {
-  stage: 'reading' | 'parsing' | 'saving' | 'done' | 'error'
+  stage: 'detecting' | 'reading' | 'parsing' | 'saving' | 'done' | 'error'
   progress: number // 0-100
   message?: string
+  // 流式解析额外字段
+  bytesRead?: number
+  totalBytes?: number
+  messagesProcessed?: number
 }
 
 /**
@@ -756,6 +760,7 @@ export interface FileParseInfo {
   platform: string // 平台
   messageCount: number // 消息数量
   memberCount: number // 成员数量
+  fileSize?: number // 文件大小（字节）
 }
 
 /**

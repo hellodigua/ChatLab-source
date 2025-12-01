@@ -7,6 +7,7 @@ import { Worker } from 'worker_threads'
 import { app } from 'electron'
 import * as path from 'path'
 import * as fs from 'fs'
+import type { ParseProgress } from '../parser'
 
 // Worker 实例
 let worker: Worker | null = null
@@ -17,6 +18,7 @@ const pendingRequests = new Map<
   {
     resolve: (value: any) => void
     reject: (error: Error) => void
+    onProgress?: (progress: ParseProgress) => void // 进度回调
   }
 >()
 
@@ -86,17 +88,26 @@ export function initWorker(): void {
 
     // 监听 Worker 消息
     worker.on('message', (message) => {
-      const { id, success, result, error } = message
+      const { id, type, success, result, error, payload } = message
 
       const pending = pendingRequests.get(id)
-      if (pending) {
-        pendingRequests.delete(id)
+      if (!pending) return
 
-        if (success) {
-          pending.resolve(result)
-        } else {
-          pending.reject(new Error(error))
+      // 处理进度消息（不删除 pending，因为还没完成）
+      if (type === 'progress') {
+        if (pending.onProgress) {
+          pending.onProgress(payload)
         }
+        return
+      }
+
+      // 处理完成或错误消息
+      pendingRequests.delete(id)
+
+      if (success) {
+        pending.resolve(result)
+      } else {
+        pending.reject(new Error(error))
       }
     })
 
@@ -130,7 +141,6 @@ export function initWorker(): void {
 function sendToWorker<T>(type: string, payload: any): Promise<T> {
   return new Promise((resolve, reject) => {
     if (!worker) {
-      // 尝试初始化 Worker
       try {
         initWorker()
       } catch (error) {
@@ -152,6 +162,42 @@ function sendToWorker<T>(type: string, payload: any): Promise<T> {
         reject(new Error(`Worker request timeout: ${type}`))
       }
     }, 30000)
+  })
+}
+
+/**
+ * 发送消息到 Worker 并等待响应（带进度回调）
+ * 用于流式导入等长时间操作
+ */
+function sendToWorkerWithProgress<T>(
+  type: string,
+  payload: any,
+  onProgress?: (progress: ParseProgress) => void,
+  timeoutMs: number = 600000 // 默认 10 分钟超时
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (!worker) {
+      try {
+        initWorker()
+      } catch (error) {
+        reject(new Error('Worker not initialized'))
+        return
+      }
+    }
+
+    const id = `req_${++requestIdCounter}`
+
+    pendingRequests.set(id, { resolve, reject, onProgress })
+
+    worker!.postMessage({ id, type, payload })
+
+    // 设置超时
+    setTimeout(() => {
+      if (pendingRequests.has(id)) {
+        pendingRequests.delete(id)
+        reject(new Error(`Worker request timeout: ${type}`))
+      }
+    }, timeoutMs)
   })
 }
 
@@ -261,9 +307,38 @@ export async function closeDatabase(sessionId: string): Promise<void> {
 
 /**
  * 解析文件获取基本信息（在 Worker 线程中执行）
+ * @deprecated 使用 streamParseFileInfo 替代
  */
 export async function parseFileInfo(filePath: string): Promise<any> {
   return sendToWorker('parseFileInfo', { filePath })
+}
+
+/**
+ * 流式解析文件获取基本信息（用于合并预览）
+ */
+export async function streamParseFileInfo(
+  filePath: string,
+  onProgress?: (progress: ParseProgress) => void
+): Promise<{
+  name: string
+  format: string
+  platform: string
+  messageCount: number
+  memberCount: number
+}> {
+  return sendToWorkerWithProgress('streamParseFileInfo', { filePath }, onProgress)
+}
+
+/**
+ * 流式导入聊天记录
+ * @param filePath 文件路径
+ * @param onProgress 进度回调
+ */
+export async function streamImport(
+  filePath: string,
+  onProgress?: (progress: ParseProgress) => void
+): Promise<{ success: boolean; sessionId?: string; error?: string }> {
+  return sendToWorkerWithProgress('streamImport', { filePath }, onProgress)
 }
 
 /**

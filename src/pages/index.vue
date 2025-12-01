@@ -74,12 +74,14 @@ function openTutorial(type: 'wechat' | 'qq') {
 function getProgressText(): string {
   if (!importProgress.value) return ''
   switch (importProgress.value.stage) {
+    case 'detecting':
+      return '正在检测格式...'
     case 'reading':
-      return '正在读取中...'
+      return '正在读取文件...'
     case 'parsing':
-      return '解析器解析中...'
+      return '正在解析消息...'
     case 'saving':
-      return '写入本地数据库中...'
+      return '正在写入数据库...'
     case 'done':
       return '导入完成'
     case 'error':
@@ -87,6 +89,24 @@ function getProgressText(): string {
     default:
       return ''
   }
+}
+
+function getProgressDetail(): string {
+  if (!importProgress.value) return ''
+  const { messagesProcessed, totalBytes, bytesRead } = importProgress.value
+
+  if (messagesProcessed && messagesProcessed > 0) {
+    return `已处理 ${messagesProcessed.toLocaleString()} 条消息`
+  }
+
+  if (totalBytes && bytesRead) {
+    const percent = Math.round((bytesRead / totalBytes) * 100)
+    const mbRead = (bytesRead / 1024 / 1024).toFixed(1)
+    const mbTotal = (totalBytes / 1024 / 1024).toFixed(1)
+    return `${mbRead} MB / ${mbTotal} MB (${percent}%)`
+  }
+
+  return importProgress.value.message || ''
 }
 </script>
 
@@ -165,7 +185,7 @@ function getProgressText(): string {
                     <UProgress v-model="importProgress.progress" size="md" />
                   </div>
                   <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                    {{ importProgress.message }}
+                    {{ getProgressDetail() }}
                   </p>
                 </template>
                 <template v-else>
