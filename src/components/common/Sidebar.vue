@@ -7,6 +7,7 @@ import type { AnalysisSession } from '@/types/chat'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
+import SidebarFooter from './sidebar/SidebarFooter.vue'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
@@ -120,10 +121,6 @@ function getSessionRouteName(session: AnalysisSession): string {
 // 判断是否是私聊
 function isPrivateChat(session: AnalysisSession): boolean {
   return session.type === 'private'
-}
-
-function handleClickXhs() {
-  window.open('https://www.xiaohongshu.com/user/profile/6841741e000000001d0091b4', '_blank')
 }
 </script>
 
@@ -298,40 +295,6 @@ function handleClickXhs() {
     </UModal>
 
     <!-- Footer -->
-    <div class="px-4 py-2 dark:border-gray-800 space-y-2 mb-4">
-      <!-- 帮助和反馈 -->
-      <UTooltip :text="isCollapsed ? '关注更新' : ''" :popper="{ placement: 'right' }">
-        <UButton
-          :block="!isCollapsed"
-          class="transition-all rounded-full hover:bg-gray-200/60 dark:hover:bg-gray-800 h-12 cursor-pointer"
-          :class="[isCollapsed ? 'flex w-12 items-center justify-center px-0' : 'justify-start pl-4']"
-          color="gray"
-          variant="ghost"
-          @click="handleClickXhs"
-        >
-          <UIcon
-            name="i-heroicons-chat-bubble-left-right"
-            class="h-5 w-5 shrink-0"
-            :class="[isCollapsed ? '' : 'mr-2']"
-          />
-          <span v-if="!isCollapsed" class="truncate">关注更新</span>
-        </UButton>
-      </UTooltip>
-
-      <!-- 设置 -->
-      <UTooltip :text="isCollapsed ? '设置' : ''" :popper="{ placement: 'right' }">
-        <UButton
-          :block="!isCollapsed"
-          class="transition-all rounded-full hover:bg-gray-200/60 dark:hover:bg-gray-800 h-12 cursor-pointer"
-          :class="[isCollapsed ? 'flex w-12 items-center justify-center px-0' : 'justify-start pl-4']"
-          color="gray"
-          variant="ghost"
-          @click="chatStore.showSettingModal = true"
-        >
-          <UIcon name="i-heroicons-cog-6-tooth" class="h-5 w-5 shrink-0" :class="[isCollapsed ? '' : 'mr-2']" />
-          <span v-if="!isCollapsed" class="truncate">设置</span>
-        </UButton>
-      </UTooltip>
-    </div>
+    <SidebarFooter />
   </div>
 </template>
