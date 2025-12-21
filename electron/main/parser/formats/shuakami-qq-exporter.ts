@@ -1,7 +1,7 @@
 /**
- * shuakami/qq-chat-exporter V4 格式解析器
+ * shuakami/qq-chat-exporter 格式解析器
  * 适配项目: https://github.com/shuakami/qq-chat-exporter
- * 版本: V4.x (2025年12月更新)
+ * 版本: 通用（支持 V4.x 及后续版本）
  *
  * 文件结构：
  * - metadata: 元数据
@@ -39,13 +39,13 @@ import { getFileSize, createProgress, readFileHeadBytes, parseTimestamp, isValid
 // ==================== 特征定义 ====================
 
 export const feature: FormatFeature = {
-  id: 'shuakami-qq-exporter-v4',
-  name: 'shuakami/qq-chat-exporter V4',
+  id: 'shuakami-qq-exporter',
+  name: 'shuakami/qq-chat-exporter',
   platform: KNOWN_PLATFORMS.QQ,
   priority: 10,
   extensions: ['.json'],
   signatures: {
-    head: [/QQChatExporter V4/, /"version"\s*:\s*"4\./],
+    head: [/QQChatExporter(?:\s+V\d+)?/, /"version"\s*:\s*"\d+\./],
     requiredFields: ['metadata', 'chatInfo'],
   },
 }
