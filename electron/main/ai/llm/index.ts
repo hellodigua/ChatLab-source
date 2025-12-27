@@ -53,6 +53,8 @@ const GLM_INFO: ProviderInfo = {
     { id: 'glm-4-flash', name: 'GLM-4-Flash', description: '高速模型，性价比高' },
     { id: 'glm-4', name: 'GLM-4', description: '标准模型' },
     { id: 'glm-4v-plus', name: 'GLM-4V-Plus', description: '多模态视觉模型' },
+    { id: 'glm-4.6v-flash', name: '4.6V免费版', description: '4.6V免费版模型' },
+    { id: 'glm-4.5-flash', name: '4.5免费版', description: '4.5免费版模型' },
   ],
 }
 
@@ -69,6 +71,20 @@ const KIMI_INFO: ProviderInfo = {
   ],
 }
 
+/** 豆包 (字节跳动 ByteDance) 提供商信息 */
+const DOUBAO_INFO: ProviderInfo = {
+  id: 'doubao',
+  name: '豆包',
+  description: '字节跳动豆包 AI 大语言模型',
+  defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+  models: [
+    { id: 'doubao-seed-1-6-lite-251015', name: '性价比豆包1.6', description: '性价比豆包1.6模型' },
+    { id: 'doubao-seed-1-6-251015', name: '更强豆包1.6', description: '更强豆包1.6模型' },
+    { id: 'doubao-seed-1-6-flash-250828', name: '更快豆包1.6', description: '更快豆包1.6模型' },
+    { id: 'doubao-1-5-lite-32k-250115', name: '豆包1.5Pro', description: '豆包1.5Pro模型' },
+  ],
+}
+
 // 所有支持的提供商信息
 export const PROVIDERS: ProviderInfo[] = [
   DEEPSEEK_INFO,
@@ -77,6 +93,7 @@ export const PROVIDERS: ProviderInfo[] = [
   MINIMAX_INFO,
   GLM_INFO,
   KIMI_INFO,
+  DOUBAO_INFO,
   OPENAI_COMPATIBLE_INFO,
 ]
 
@@ -333,6 +350,7 @@ export function createLLMService(config: ExtendedLLMConfig): ILLMService {
     case 'minimax':
     case 'glm':
     case 'kimi':
+    case 'doubao':
       return new OpenAICompatibleService(config.apiKey, config.model, baseUrl)
     case 'openai-compatible':
       return new OpenAICompatibleService(config.apiKey, config.model, config.baseUrl, config.disableThinking)
@@ -370,7 +388,10 @@ export function getProviderInfo(provider: LLMProvider): ProviderInfo | null {
 /**
  * 验证 API Key
  */
-export async function validateApiKey(provider: LLMProvider, apiKey: string): Promise<boolean> {
+export async function validateApiKey(
+  provider: LLMProvider,
+  apiKey: string
+): Promise<{ success: boolean; error?: string }> {
   const service = createLLMService({ provider, apiKey })
   return service.validateApiKey()
 }

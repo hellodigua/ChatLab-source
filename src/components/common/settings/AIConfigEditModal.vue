@@ -50,6 +50,7 @@ const configType = ref<ConfigType>('preset')
 const isValidating = ref(false)
 const isSaving = ref(false)
 const showAdvanced = ref(false)
+const showApiKey = ref(false) // 控制API Key显示/隐藏
 
 const formData = ref({
   name: '',
@@ -74,6 +75,14 @@ const currentProvider = computed(() => {
   return props.providers.find((p) => p.id === formData.value.provider)
 })
 
+const providerOptions = computed(() => {
+  return presetProviders.value.map((p) => ({
+    label: p.name,
+    value: p.id,
+    description: p.description,
+  }))
+})
+
 const modelOptions = computed(() => {
   if (!currentProvider.value) return []
   return currentProvider.value.models.map((m) => ({
@@ -81,6 +90,11 @@ const modelOptions = computed(() => {
     value: m.id,
     description: m.description,
   }))
+})
+
+const selectedModelDescription = computed(() => {
+  if (!formData.value.model) return ''
+  return modelOptions.value.find((m) => m.value === formData.value.model)?.description || ''
 })
 
 const canSave = computed(() => {
@@ -117,6 +131,7 @@ const modalTitle = computed(() => (props.mode === 'add' ? '添加新配置' : '�
 function resetForm() {
   configType.value = 'preset'
   showAdvanced.value = false
+  showApiKey.value = false
   formData.value = {
     name: '',
     provider: presetProviders.value[0]?.id || '',
@@ -141,6 +156,7 @@ function initFromConfig(config: AIServiceConfig) {
     showAdvanced.value = false
   }
 
+  showApiKey.value = false // 编辑时默认隐藏API Key
   formData.value = {
     name: config.name,
     provider: config.provider,
@@ -331,9 +347,17 @@ watch(
 
 watch(
   () => formData.value.provider,
-  (newProvider) => {
+  (newProvider, oldProvider) => {
     const provider = props.providers.find((p) => p.id === newProvider)
-    if (provider && provider.models.length > 0 && configType.value === 'preset') {
+    // 只有在用户手动切换provider时才重置model，编辑模式下初始化时不要重置
+    if (
+      provider &&
+      provider.models.length > 0 &&
+      configType.value === 'preset' &&
+      oldProvider !== undefined &&
+      oldProvider !== '' &&
+      oldProvider !== newProvider
+    ) {
       formData.value.model = provider.models[0].id
     }
     validationResult.value = 'idle'
@@ -470,9 +494,10 @@ watch(
             <!-- 服务商选择 -->
             <div>
               <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">AI 服务商</label>
-              <UTabs
+              <USelect
                 v-model="formData.provider"
-                :items="presetProviders.map((p) => ({ label: p.name, value: p.id }))"
+                :items="providerOptions"
+                placeholder="选择AI服务商"
                 class="w-full"
               />
               <p v-if="currentProvider" class="mt-2 text-xs text-gray-500">
@@ -484,12 +509,24 @@ watch(
             <div>
               <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">API Key</label>
               <div class="flex gap-2">
-                <UInput
-                  v-model="formData.apiKey"
-                  type="password"
-                  :placeholder="mode === 'edit' ? '输入新的 API Key（留空保持原有）' : '输入你的 API Key'"
-                  class="flex-1"
-                />
+                <div class="relative flex-1">
+                  <UInput
+                    v-model="formData.apiKey"
+                    :type="showApiKey ? 'text' : 'password'"
+                    :placeholder="mode === 'edit' ? '输入新的 API Key（留空保持原有）' : '输入你的 API Key'"
+                    class="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    @click="showApiKey = !showApiKey"
+                  >
+                    <UIcon
+                      :name="showApiKey ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                      class="h-5 w-5"
+                    />
+                  </button>
+                </div>
                 <UButton :loading="isValidating" :disabled="!formData.apiKey" variant="soft" @click="validateKey">
                   验证
                 </UButton>
@@ -514,9 +551,17 @@ watch(
             </div>
 
             <!-- 模型选择 -->
-            <div>
+            <div v-if="formData.provider && modelOptions.length > 0">
               <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">模型</label>
-              <UTabs v-model="formData.model" :items="modelOptions" placeholder="选择模型" />
+              <USelect
+                v-model="formData.model"
+                :items="modelOptions"
+                placeholder="选择模型"
+                class="w-full"
+              />
+              <p v-if="selectedModelDescription" class="mt-2 text-xs text-gray-500">
+                {{ selectedModelDescription }}
+              </p>
             </div>
           </template>
 
@@ -589,7 +634,24 @@ watch(
                     API Key
                     <span class="font-normal text-gray-400">（可选）</span>
                   </label>
-                  <UInput v-model="formData.apiKey" type="password" placeholder="本地服务通常不需要" />
+                  <div class="relative">
+                    <UInput
+                      v-model="formData.apiKey"
+                      :type="showApiKey ? 'text' : 'password'"
+                      placeholder="本地服务通常不需要"
+                      class="w-full pr-10"
+                    />
+                    <button
+                      type="button"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      @click="showApiKey = !showApiKey"
+                    >
+                      <UIcon
+                        :name="showApiKey ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                        class="h-5 w-5"
+                      />
+                    </button>
+                  </div>
                   <p class="mt-1 text-xs text-gray-500">如果服务设置了认证，在此输入</p>
                 </div>
               </div>
@@ -616,12 +678,24 @@ watch(
             <div>
               <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">API Key</label>
               <div class="flex gap-2">
-                <UInput
-                  v-model="formData.apiKey"
-                  type="password"
-                  :placeholder="mode === 'edit' ? '输入新的 API Key（留空保持原有）' : '输入你的 API Key'"
-                  class="flex-1"
-                />
+                <div class="relative flex-1">
+                  <UInput
+                    v-model="formData.apiKey"
+                    :type="showApiKey ? 'text' : 'password'"
+                    :placeholder="mode === 'edit' ? '输入新的 API Key（留空保持原有）' : '输入你的 API Key'"
+                    class="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    @click="showApiKey = !showApiKey"
+                  >
+                    <UIcon
+                      :name="showApiKey ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                      class="h-5 w-5"
+                    />
+                  </button>
+                </div>
                 <UButton
                   :loading="isValidating"
                   :disabled="!formData.apiKey || !formData.baseUrl"

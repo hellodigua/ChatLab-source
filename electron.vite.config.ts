@@ -60,6 +60,11 @@ export default defineConfig(() => {
       server: {
         host: '0.0.0.0',
         port: 3400,
+        hmr: {
+          protocol: 'ws',
+          host: 'localhost',
+          port: 3400,
+        },
       },
     },
   }

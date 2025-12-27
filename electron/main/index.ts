@@ -61,9 +61,9 @@ class MainProcess {
   async createWindow() {
     this.mainWindow = new BrowserWindow({
       width: 1180,
-      height: 752,
+      height: 800,
       minWidth: 1180,
-      minHeight: 752,
+      minHeight: 800,
       show: false,
       autoHideMenuBar: true,
       webPreferences: {

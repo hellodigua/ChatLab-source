@@ -16,3 +16,28 @@
   --color-pink-900: #84173b;
   --color-pink-950: #4a071c;
 }
+
+/* 隐藏下拉框滚动条 - 针对所有下拉菜单 */
+/* 只针对下拉菜单相关的元素，不影响页面其他滚动容器 */
+
+/* Firefox - 隐藏滚动条但保留滚动功能 */
+[data-headlessui-state],
+[role="listbox"],
+[role="menu"],
+.select-menu,
+.dropdown-menu,
+[data-headlessui-state] > ul,
+[data-headlessui-state] > div,
+[role="listbox"] > ul,
+[role="listbox"] > div,
+[data-headlessui-state] ul,
+[data-headlessui-state] div,
+[role="listbox"] ul,
+[role="listbox"] div,
+body > [data-headlessui-state],
+body > [role="listbox"],
+body [data-headlessui-state][style*="position"],
+body [role="listbox"][style*="position"] {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
