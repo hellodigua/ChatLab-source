@@ -39,6 +39,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
+  include: installer-dpi.nsh
 
 # macOS 平台配置
 mac:
