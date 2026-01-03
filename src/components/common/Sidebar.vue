@@ -2,16 +2,21 @@
 import { storeToRefs } from 'pinia'
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { AnalysisSession } from '@/types/base'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/en'
 import SidebarFooter from './sidebar/SidebarFooter.vue'
 import { useSessionStore } from '@/stores/session'
 import { useLayoutStore } from '@/stores/layout'
+import { useSettingsStore } from '@/stores/settings'
 
 dayjs.extend(relativeTime)
-dayjs.locale('zh-cn')
+
+const { t } = useI18n()
+const settingsStore = useSettingsStore()
 
 const sessionStore = useSessionStore()
 const layoutStore = useLayoutStore()
@@ -103,19 +108,19 @@ function getContextMenuItems(session: AnalysisSession) {
   return [
     [
       {
-        label: '重命名',
+        label: t('sidebar.contextMenu.rename'),
         icon: 'i-lucide-pencil',
         class: 'p-2',
         onSelect: () => openRenameModal(session),
       },
       {
-        label: isPinned ? '取消置顶' : '置顶',
+        label: isPinned ? t('sidebar.contextMenu.unpin') : t('sidebar.contextMenu.pin'),
         icon: isPinned ? 'i-lucide-pin-off' : 'i-lucide-pin',
         class: 'p-2',
         onSelect: () => sessionStore.togglePinSession(session.id),
       },
       {
-        label: '删除',
+        label: t('sidebar.contextMenu.delete'),
         icon: 'i-lucide-trash',
         color: 'error' as const,
         class: 'p-2',
@@ -158,8 +163,8 @@ function getSessionAvatarText(session: AnalysisSession): string {
     <div class="flex flex-col p-4">
       <!-- Header / Toggle -->
       <div class="mb-2 flex items-center" :class="[isCollapsed ? 'justify-center' : 'justify-between']">
-        <div v-if="!isCollapsed" class="text-2xl font-black tracking-tight text-pink-500 ml-2">ChatLab</div>
-        <UTooltip :text="isCollapsed ? '展开侧边栏' : '收起侧边栏'" :popper="{ placement: 'right' }">
+        <div v-if="!isCollapsed" class="text-2xl font-black tracking-tight text-pink-500 ml-2">{{ t('sidebar.brand') }}</div>
+        <UTooltip :text="isCollapsed ? t('sidebar.tooltip.expand') : t('sidebar.tooltip.collapse')" :popper="{ placement: 'right' }">
           <UButton
             icon="i-heroicons-bars-3"
             color="gray"
@@ -172,7 +177,7 @@ function getSessionAvatarText(session: AnalysisSession): string {
       </div>
 
       <!-- New Analysis Button -->
-      <UTooltip :text="isCollapsed ? '分析新聊天' : ''" :popper="{ placement: 'right' }">
+      <UTooltip :text="isCollapsed ? t('sidebar.newAnalysis') : ''" :popper="{ placement: 'right' }">
         <UButton
           :block="!isCollapsed"
           class="transition-all rounded-full hover:bg-gray-200/60 dark:hover:bg-gray-800 h-12 cursor-pointer"
@@ -182,12 +187,12 @@ function getSessionAvatarText(session: AnalysisSession): string {
           @click="handleImport"
         >
           <UIcon name="i-heroicons-plus" class="h-5 w-5 shrink-0" :class="[isCollapsed ? '' : 'mr-2']" />
-          <span v-if="!isCollapsed" class="truncate">分析新聊天</span>
+          <span v-if="!isCollapsed" class="truncate">{{ t('sidebar.newAnalysis') }}</span>
         </UButton>
       </UTooltip>
 
       <!-- Tools Button -->
-      <UTooltip :text="isCollapsed ? '实用工具' : ''" :popper="{ placement: 'right' }">
+      <UTooltip :text="isCollapsed ? t('sidebar.tools') : ''" :popper="{ placement: 'right' }">
         <UButton
           :block="!isCollapsed"
           class="transition-all rounded-full hover:bg-gray-200/60 dark:hover:bg-gray-800 h-12 cursor-pointer mt-2"
@@ -202,7 +207,7 @@ function getSessionAvatarText(session: AnalysisSession): string {
           @click="router.push({ name: 'tools' })"
         >
           <UIcon name="i-heroicons-wrench-screwdriver" class="h-4 w-4 shrink-0" :class="[isCollapsed ? '' : 'mr-2']" />
-          <span v-if="!isCollapsed" class="truncate">实用工具</span>
+          <span v-if="!isCollapsed" class="truncate">{{ t('sidebar.tools') }}</span>
         </UButton>
       </UTooltip>
     </div>
@@ -212,18 +217,18 @@ function getSessionAvatarText(session: AnalysisSession): string {
       <!-- 聊天记录标题 - 固定在顶部，不随列表滚动 -->
       <UTooltip
         v-if="!isCollapsed && sessions.length > 0"
-        text="右键可删除或重命名聊天记录"
+        :text="t('sidebar.tooltip.hint')"
         :popper="{ placement: 'right' }"
       >
         <div class="px-3 mb-2 flex items-center gap-1">
-          <div class="text-sm font-medium text-gray-500">聊天记录</div>
+          <div class="text-sm font-medium text-gray-500">{{ t('sidebar.chatHistory') }}</div>
           <UIcon name="i-heroicons-question-mark-circle" class="size-3.5 text-gray-400" />
         </div>
       </UTooltip>
 
       <!-- 聊天记录列表 - 可滚动区域 -->
       <div class="flex-1 overflow-y-auto">
-        <div v-if="sessions.length === 0 && !isCollapsed" class="py-8 text-center text-sm text-gray-500">暂无记录</div>
+        <div v-if="sessions.length === 0 && !isCollapsed" class="py-8 text-center text-sm text-gray-500">{{ t('sidebar.noRecords') }}</div>
 
         <div class="space-y-1 pb-8">
           <UTooltip
@@ -298,17 +303,17 @@ function getSessionAvatarText(session: AnalysisSession): string {
     <UModal v-model:open="showRenameModal">
       <template #content>
         <div class="p-4">
-          <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">重命名</h3>
+          <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">{{ t('sidebar.renameModal.title') }}</h3>
           <UInput
             ref="renameInputRef"
             v-model="newName"
-            placeholder="请输入新名称"
+            :placeholder="t('sidebar.renameModal.placeholder')"
             class="mb-4 w-100"
             @keydown.enter="handleRename"
           />
           <div class="flex justify-end gap-2">
-            <UButton variant="soft" @click="closeRenameModal">取消</UButton>
-            <UButton color="primary" :disabled="!newName.trim()" @click="handleRename">确定</UButton>
+            <UButton variant="soft" @click="closeRenameModal">{{ t('common.cancel') }}</UButton>
+            <UButton color="primary" :disabled="!newName.trim()" @click="handleRename">{{ t('common.confirm') }}</UButton>
           </div>
         </div>
       </template>
@@ -318,15 +323,13 @@ function getSessionAvatarText(session: AnalysisSession): string {
     <UModal v-model:open="showDeleteModal">
       <template #content>
         <div class="p-4">
-          <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">确认删除</h3>
+          <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">{{ t('sidebar.deleteModal.title') }}</h3>
           <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-            确定要删除聊天记录
-            <span class="font-medium text-gray-900 dark:text-white">"{{ deleteTarget?.name }}"</span>
-            吗？此操作无法撤销。
+            {{ t('sidebar.deleteModal.message', { name: deleteTarget?.name }) }}
           </p>
           <div class="flex justify-end gap-2">
-            <UButton variant="soft" @click="closeDeleteModal">取消</UButton>
-            <UButton color="error" @click="confirmDelete">删除</UButton>
+            <UButton variant="soft" @click="closeDeleteModal">{{ t('common.cancel') }}</UButton>
+            <UButton color="error" @click="confirmDelete">{{ t('common.delete') }}</UButton>
           </div>
         </div>
       </template>

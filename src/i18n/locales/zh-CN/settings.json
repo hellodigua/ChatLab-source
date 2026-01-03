@@ -1,0 +1,21 @@
+{
+  "title": "全局设置",
+  "tabs": {
+    "basic": "基础设置",
+    "aiConfig": "模型配置",
+    "aiPrompt": "AI 对话配置",
+    "storage": "存储管理",
+    "about": "关于"
+  },
+  "basic": {
+    "language": {
+      "title": "语言",
+      "description": "选择界面显示语言"
+    },
+    "appearance": {
+      "title": "外观",
+      "description": "选择主题模式"
+    }
+  }
+}
+

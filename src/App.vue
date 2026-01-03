@@ -9,10 +9,12 @@ import { ChatRecordDrawer } from '@/components/common/ChatRecord'
 import { useSessionStore } from '@/stores/session'
 import { useLayoutStore } from '@/stores/layout'
 import { usePromptStore } from '@/stores/prompt'
+import { useSettingsStore } from '@/stores/settings'
 
 const sessionStore = useSessionStore()
 const layoutStore = useLayoutStore()
 const promptStore = usePromptStore()
+const settingsStore = useSettingsStore()
 const { isInitialized } = storeToRefs(sessionStore)
 const route = useRoute()
 
@@ -20,8 +22,11 @@ const tooltip = {
   delayDuration: 100,
 }
 
-// 应用启动时从数据库加载会话列表
+// 应用启动时初始化
 onMounted(async () => {
+  // 初始化语言设置（同步 i18n 和 dayjs）
+  settingsStore.initLocale()
+  // 从数据库加载会话列表
   await sessionStore.loadSessions()
 })
 </script>

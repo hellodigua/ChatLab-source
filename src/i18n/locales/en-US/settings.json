@@ -1,0 +1,21 @@
+{
+  "title": "Settings",
+  "tabs": {
+    "basic": "General",
+    "aiConfig": "AI Models",
+    "aiPrompt": "AI Chat Config",
+    "storage": "Storage",
+    "about": "About"
+  },
+  "basic": {
+    "language": {
+      "title": "Language",
+      "description": "Choose display language"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "description": "Choose theme mode"
+    }
+  }
+}
+

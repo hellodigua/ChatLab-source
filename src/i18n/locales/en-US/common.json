@@ -1,0 +1,21 @@
+{
+  "confirm": "OK",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "save": "Save",
+  "edit": "Edit",
+  "rename": "Rename",
+  "close": "Close",
+  "loading": "Loading...",
+  "noData": "No data",
+  "error": {
+    "general": "Operation failed, please try again",
+    "network": "Network error"
+  },
+  "unit": {
+    "messages": "messages",
+    "members": "members",
+    "days": "days"
+  }
+}
+

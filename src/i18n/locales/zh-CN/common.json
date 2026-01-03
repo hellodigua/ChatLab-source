@@ -1,0 +1,21 @@
+{
+  "confirm": "确定",
+  "cancel": "取消",
+  "delete": "删除",
+  "save": "保存",
+  "edit": "编辑",
+  "rename": "重命名",
+  "close": "关闭",
+  "loading": "加载中...",
+  "noData": "暂无数据",
+  "error": {
+    "general": "操作失败，请重试",
+    "network": "网络错误"
+  },
+  "unit": {
+    "messages": "条消息",
+    "members": "个成员",
+    "days": "天"
+  }
+}
+

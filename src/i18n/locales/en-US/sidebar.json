@@ -1,0 +1,28 @@
+{
+  "brand": "ChatLab",
+  "newAnalysis": "New Analysis",
+  "tools": "Tools",
+  "chatHistory": "Chat History",
+  "noRecords": "No records",
+  "contextMenu": {
+    "rename": "Rename",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "delete": "Delete"
+  },
+  "renameModal": {
+    "title": "Rename",
+    "placeholder": "Enter new name"
+  },
+  "deleteModal": {
+    "title": "Confirm Delete",
+    "message": "Are you sure you want to delete \"{name}\"? This action cannot be undone."
+  },
+  "tooltip": {
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar",
+    "hint": "Right-click to rename or delete"
+  },
+  "sessionInfo": "{count} messages · {time}"
+}
+
